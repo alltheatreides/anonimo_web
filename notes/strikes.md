@@ -46,3 +46,7 @@
 - **Perfect Attack**: Hits opponent while keeping yourself safe.
 - **Imperfect Attack**: Lands a hit but leaves you exposed.
 - **Key Principle**: Execution quality (speed, grace, precision) determines perfection.
+
+# Special movements
+- Disengage (Sfalsata): Circular motion under opponent's sword to avoid a bind, often followed by a cut or thrust (parsed through plays).
+- Arm Grapple (Presa): Grappling action to control opponent's sword or arm.

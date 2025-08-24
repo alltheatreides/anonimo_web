@@ -16,3 +16,6 @@ Combines movement with attack/feint.
 - **Special Use: Para Piedi**: Hook instep behind opponent’s foot after stepping in to unbalance them.
 - **Straightening the Bent Leg**: Straighten bent lead leg when attacked, without moving foot. Lets strike pass safely
 while extending reach slightly.
+
+# Remarks
+- Pressing (stringere): Closing distance towards opponent to pressure them and have them react, usually done with a gathering step.
