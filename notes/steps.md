@@ -18,4 +18,4 @@ Combines movement with attack/feint.
 while extending reach slightly.
 
 # Remarks
-- Pressing (stringere): Closing distance towards opponent to pressure them and have them react, usually done with a gathering step.
+- **Pressing** (stringere): Closing distance towards opponent to pressure them and have them react, usually done with a gathering step.
