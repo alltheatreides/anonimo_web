@@ -206,6 +206,211 @@ function extractProtagonistGuard(text) {
 }
 
 /**
+ * Extracts the antagonist guard from the play text
+ * @param {string} text - The text content to extract antagonist guard from
+ * @param {boolean} second - Whether to extract the second antagonist guard (if "or" is present)
+ * @returns {string|null} - The protagonist guard or null if not found
+ */
+function extractAntagonistGuard(text, second = false) {
+    const title = extractTitle(text);
+    const parts = title.split(/\s+vs\.?\s+/i);
+
+    const guardPatterns = [
+        'porta di ferro stretta',  // Move more specific patterns first
+        'porta di ferro larga',
+        'porta larga di ferro',
+        'porta di ferro alta',
+        'cinghiara porta di ferro stretta',
+        'cinghiara porta di ferro larga',
+        'cinghiara porta di ferro',
+        'coda lunga stretta',     // Less specific patterns later
+        'coda lunga streta',
+        'coda lunga larga',
+        'coda lunga alta',
+        'guardia di intrare',
+        'guardia di testa',
+        'guardia alta',
+        'guardia di faccia',
+        'guardia di sopra braccio',
+        'guardia sopra braccio',
+        'guardia di lioncorno',
+        'guardia lioncorno',
+        'guardia liocorno',
+        'sword in presence',
+        'point in presence',
+        'porta alta di ferro',
+        'false edge',
+        'false to false',
+        'true edge mezza spada',
+        'true edge',
+        'mezza spada',
+        'guard with the right foot forward',
+        'cinghiara pora di ferro stretta',
+        'any',
+        'unstated'
+    ];
+
+    if (parts.length >= 2) {
+        const antagonistPart = parts[1].trim().toLowerCase();
+        const orParts = antagonistPart.split(/\s+or\s+/i);
+
+        if (orParts.length >= 2 && second) { // call of the function with second = true
+            const secondGuardPart = orParts[1].trim().toLowerCase();
+            for (const guard of guardPatterns) {
+                if (secondGuardPart.includes(guard.toLowerCase())) {
+                    return guard;
+                }
+            }
+        } else if (orParts.length >= 2 && !second) { // call of the function with second = false
+            const firstGuardPart = orParts[0].trim().toLowerCase();
+            for (const guard of guardPatterns) {
+                if (firstGuardPart.includes(guard.toLowerCase())) {
+                    return guard;
+                }
+            }
+        } else if (orParts.length === 1 && !second) { // If there is no or part, proceed as usual
+            const firstGuardPart = orParts[0].trim().toLowerCase();
+            for (const guard of guardPatterns) {
+                if (firstGuardPart.includes(guard.toLowerCase())) {
+                    return guard;
+                }
+            }
+        }
+
+    } else { // Handle cases where antagonist guard is not specified in title but in text body
+        // Patterns that indicate "any" guard placement
+        const anyGuardPatterns = [
+            /finding your enemy in any guard he wants/i,
+            /finding your adversary in what placement he wants/i,
+            /finding your enemy placed however he wants/i,
+            /finding your enemy in any guard/i,
+            /against your enemy in whatsoever guard/i,
+            /in whatsoever guard he wants/i,
+            /in any guard he wants/i,
+            /in what guard he wants/i,
+            /however he wants/i,
+            /whatsoever.*guard/i,
+            /any.*guard/i
+        ];
+
+        // Check for "any" guard patterns first
+        for (const pattern of anyGuardPatterns) {
+            if (pattern.test(text)) {
+                return "any";
+            }
+        }
+
+       // If there is patiente in the title, antagonist guard is often not specified, so also return "any"
+         if (/as Patiente/i.test(title) && !second) {
+            return "any";
+         }
+
+    }
+
+    return null;
+}
+
+
+/**
+ * Extracts if the play is with the protagonist as patient
+ * @returns boolean - true if protagonist is patient, otherwise undefined
+ * @param text
+ */
+function extractPatient(text) {
+    // Look for "as Patiente" or similar patterns in the title
+    const title = extractTitle(text);
+    if (/as Patiente/i.test(title)) {
+        return true;
+    } else {
+        return null;
+    }
+}
+
+function extractProtagonistFoot(text) {
+    // Foot position patterns
+    const footPatterns = [
+        'with the left foot forward',
+        'with the right foot forward',
+        'with the right forward',
+        'left foot forward',
+        'right foot forward'
+    ];
+
+    // Analyze the title first
+    const title = extractTitle(text).toLowerCase();
+
+    // split by "vs." to get protagonist part
+    const parts = title.split(/\s+vs\.?\s+/i);
+    if (parts.length >= 2) {
+        const protagonistPart = parts[0].trim().toLowerCase();
+
+        // Check if any foot pattern is found in the protagonist part and return only the foot direction
+        for (const foot of footPatterns) {
+            if (protagonistPart.includes(foot)) {
+                return foot.includes('left') ? 'left' : 'right';
+            }
+        }
+
+        // Look for alternative patterns with '(L)' or '(R)'
+        const altMatch = protagonistPart.match(/\((L|R)\)/i);
+        if (altMatch) {
+            return altMatch[1].toUpperCase() === 'L' ? 'left' : 'right';
+        }
+
+    } else { // Handle single foot scenarios (no "vs")
+
+        for (const foot of footPatterns) {
+            if (title.includes(foot)) {
+                return foot.includes('left') ? 'left' : 'right';
+            }
+        }
+
+        // Look for alternative patterns with '(L)' or '(R)'
+        const altMatch = title.match(/\((L|R)\)/i);
+        if (altMatch) {
+            return altMatch[1].toUpperCase() === 'L' ? 'left' : 'right';
+        }
+    }
+
+    // Look inside the text
+    const protagonistFootPatterns = [
+        /you will be (?:set|found|placed) (?:against him )?in .+? with (?:your |the )?(\w+) foot forward/i,
+        /you will be in .+? (?:but )?with (?:your |the )?(\w+) foot forward/i,
+        /you will be in .+? with the (?:your |the )?(\w+) foot in narrow stance/i,
+        /you (?:will be|are) set .+? with (?:your |the )?(\w+) foot forward/i,
+        /you (?:being|remaining) .+? with (?:your |the )?(\w+) foot forward/i,
+        /you .+? with (?:your |the )?(\w+) foot forward/i,
+        /being in .+? with (?:your |the )?(\w+) foot forward/i,
+        /remaining in .+? with (?:your |the )?(\w+) foot forward/i,
+        /finding yourself .+? with (?:your |the )?(\w+) foot forward/i,
+        /you are in .+? with (?:your |the )?(\w+) foot forward/i,
+        /your adversary is set in .+? with the (?:your |the )?(\w+) foot forward and you are set in the same way/i,
+        /your adversary is set in .+? with the (?:your |the )?(\w+) foot forward you will be in the same/i,
+        /your enemy is set in .+? with the (?:your |the )?(\w+) foot forward you will yourself be placed in the same guard/i,
+        /your enemy is set in .+? with the (?:your |the )?(\w+) foot forward, you will be opposite him in the same guard/i,
+        /your enemy is set in .+? with the (?:your |the )?(\w+) foot forward, you will yourself be in the same guard/i,
+        /your enemy is set with the sword settled in .+? with the (?:your |the )?(\w+) foot forward, you will yourself be in the same guard/i,
+        /your enemy is settled in .+? with the (?:your |the )?(\w+) foot forward and you are set in the same/i,
+        /your enemy is set with the sword settled in .+? with the (?:your |the )?(\w+) foot forward, you yourself will be set in the same arrangement/i,
+        /your enemy is set in .+? with his (?:your |the )?(\w+) foot forward, you will be set in .+?, with your (?:your |the )?(\w+) foot traversing/i,
+        /your enemy is set in .+? with the (?:your |the )?(\w+) foot forward and you are set in porta di ferro larga, with the same foot forward/i,
+    ];
+
+    for (const pattern of protagonistFootPatterns) {
+        const match = text.match(pattern);
+        if (match) {
+            const foot = match[1].toLowerCase();
+            if (foot === 'left' || foot === 'right') {
+                return foot;
+            }
+        }
+    }
+
+    return null;
+}
+
+
+/**
  * Main function to extract separate keys from the original data
  * @param {Array} data - Original data array
  * @returns {Array} - Modified data array with new keys
@@ -215,11 +420,16 @@ function extract_separate_keys(data) {
         return {
             ...play,
             protagonist_guard: extractProtagonistGuard(play.text),
+            antagonist_guard_1: extractAntagonistGuard(play.text),
+            antagonist_guard_2: extractAntagonistGuard(play.text, true),
+            protagonist_foot_forward: extractProtagonistFoot(play.text),
+            patient: extractPatient(play.text),
             counter: extractCounterData(play.text),
             title: extractTitle(play.text)
         };
     });
 }
+
 
 // Process the data
 const processedData = extract_separate_keys(originalData);
