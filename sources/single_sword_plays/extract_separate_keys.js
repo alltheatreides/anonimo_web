@@ -326,6 +326,12 @@ function extractPatient(text) {
     }
 }
 
+
+/**
+ * Extracts the protagonist foot position from the play text
+ * Returns 'left', 'right', or null if not found
+ * @param {string} text
+ */
 function extractProtagonistFoot(text) {
     // Foot position patterns
     const footPatterns = [
@@ -333,7 +339,9 @@ function extractProtagonistFoot(text) {
         'with the right foot forward',
         'with the right forward',
         'left foot forward',
-        'right foot forward'
+        'left foot traversing',
+        'right foot forward',
+        'right foot traversing',
     ];
 
     // Analyze the title first
@@ -372,7 +380,7 @@ function extractProtagonistFoot(text) {
         }
     }
 
-    // Look inside the text
+    // Look inside the text for explicit foot positions
     const protagonistFootPatterns = [
         /you will be (?:set|found|placed) (?:against him )?in .+? with (?:your |the )?(\w+) foot forward/i,
         /you will be in .+? (?:but )?with (?:your |the )?(\w+) foot forward/i,
@@ -384,21 +392,41 @@ function extractProtagonistFoot(text) {
         /remaining in .+? with (?:your |the )?(\w+) foot forward/i,
         /finding yourself .+? with (?:your |the )?(\w+) foot forward/i,
         /you are in .+? with (?:your |the )?(\w+) foot forward/i,
-        /your adversary is set in .+? with the (?:your |the )?(\w+) foot forward and you are set in the same way/i,
-        /your adversary is set in .+? with the (?:your |the )?(\w+) foot forward you will be in the same/i,
-        /your enemy is set in .+? with the (?:your |the )?(\w+) foot forward you will yourself be placed in the same guard/i,
-        /your enemy is set in .+? with the (?:your |the )?(\w+) foot forward, you will be opposite him in the same guard/i,
-        /your enemy is set in .+? with the (?:your |the )?(\w+) foot forward, you will yourself be in the same guard/i,
-        /your enemy is set with the sword settled in .+? with the (?:your |the )?(\w+) foot forward, you will yourself be in the same guard/i,
-        /your enemy is settled in .+? with the (?:your |the )?(\w+) foot forward and you are set in the same/i,
-        /your enemy is set with the sword settled in .+? with the (?:your |the )?(\w+) foot forward, you yourself will be set in the same arrangement/i,
-        /your enemy is set in .+? with his (?:your |the )?(\w+) foot forward, you will be set in .+?, with your (?:your |the )?(\w+) foot traversing/i,
-        /your enemy is set in .+? with the (?:your |the )?(\w+) foot forward and you are set in porta di ferro larga, with the same foot forward/i,
+        /remaining as above in .+? with your (\w+) foot forward/i,
+        /you will be set in .+? with the (\w+) foot traversing/i,
     ];
 
+    // Patterns that indicate "same" foot position as enemy
+    const sameFootPatterns = [
+        /your adversary is set in .+? with the (\w+) foot forward and you are set in the same way/i,
+        /your adversary is set in .+? with the (\w+) foot forward you will be in the same/i,
+        /your enemy is set in .+? with the (\w+) foot forward you will yourself be placed in the same guard/i,
+        /your enemy is set in .+? with the (\w+) foot forward, you will be opposite him in the same guard/i,
+        /your enemy is set in .+? with the (\w+) foot forward, you will yourself be in the same guard/i,
+        /your enemy is set with the sword settled in .+? with the (\w+) foot forward, you will yourself be in the same guard/i,
+        /your enemy is settled in .+? with the (\w+) foot forward and you are set in the same/i,
+        /your enemy is set with the sword settled in .+? with the (\w+) foot forward, you yourself will be set in the same arrangement/i,
+        /your enemy is set in .+? with the (\w+) foot forward and you are set in porta di ferro larga, with the same foot forward/i,
+        /you will be set in .+? with the same foot forward/i,
+        /you will yourself be set opposite him in the same stance/i,
+        /you will be likewise arranged/i,
+        /you will be positioned likewise/i,
+        /you will be in the same/i,
+        /you will settle yourself in the same guard/i,
+        /you are settled in the same manner/i,
+        /you will be likewise settled/i,
+        /you will be placed in the same/i,
+        /your enemy is found in .+? with the (\w+) foot forward, you will be in .+? with the same foot forward/i,
+        /Your enemy being found settled in .+? with the (\w+) foot forward you yourself will be set in the same way/i,
+        /your enemy is set in .+? with the (\w+) foot forward and you are set in the same guard/i,
+        /your enemy should be with his .+? with the (\w+) foot forward you will ease yourself into .+? with the same foot forward/i,
+        /your enemy should be in .+? with the (\w+) foot forward you will ease yourself into .+? with the same foot forward/i,
+    ];
+
+    // First check patterns with explicit foot capture groups
     for (const pattern of protagonistFootPatterns) {
         const match = text.match(pattern);
-        if (match) {
+        if (match && match[1]) {
             const foot = match[1].toLowerCase();
             if (foot === 'left' || foot === 'right') {
                 return foot;
@@ -406,9 +434,128 @@ function extractProtagonistFoot(text) {
         }
     }
 
+    // Then check "same" patterns that reference enemy foot
+    for (const pattern of sameFootPatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+            const foot = match[1].toLowerCase();
+            if (foot === 'left' || foot === 'right') {
+                return foot;
+            }
+        }
+    }
+
+    // Finally check "same" patterns without capture groups - extract enemy foot separately
+    const simpleSamePatterns = [
+        /you will be set in .+? with the same foot forward/i,
+        /you will yourself be set opposite him in the same stance/i,
+        /you will be likewise arranged/i,
+        /you will be positioned likewise/i,
+        /you will be in the same/i,
+        /you will settle yourself in the same guard/i,
+        /you are settled in the same manner/i,
+        /you will be likewise settled/i,
+        /you will be placed in the same/i
+    ];
+
+    for (const pattern of simpleSamePatterns) {
+        if (pattern.test(text)) {
+            // Extract enemy foot from earlier in the text
+            const enemyFootMatch = text.match(/your (?:enemy|adversary) (?:is |being )?(?:set|settled|found|placed) .+? with (?:his |the )?(\w+) foot forward/i);
+            if (enemyFootMatch && enemyFootMatch[1]) {
+                const foot = enemyFootMatch[1].toLowerCase();
+                if (foot === 'left' || foot === 'right') {
+                    return foot;
+                }
+            }
+        }
+    }
+
     return null;
 }
 
+
+/**
+ * Extracts the antagonist foot position from the play text
+ * Returns 'left', 'right', or null if not found
+ * @param {string} text
+ */
+function extractAntagonistFoot(text) {
+    // Foot position patterns
+    const footPatterns = [
+        'with the left foot forward',
+        'with the right foot forward',
+        'with the right forward',
+        'left foot forward',
+        'left foot traversing',
+        'right foot forward',
+        'right foot traversing',
+    ];
+
+    // Analyze the title first
+    const title = extractTitle(text).toLowerCase();
+
+    // split by "vs." to get antagonist part
+    const parts = title.split(/\s+vs\.?\s+/i);
+    if (parts.length >= 2) {
+        const antagonistPart = parts[1].trim().toLowerCase();
+
+        // Check if any foot pattern is found in the antagonist part and return only the foot direction
+        for (const foot of footPatterns) {
+            if (antagonistPart.includes(foot)) {
+                return foot.includes('left') ? 'left' : 'right';
+            }
+        }
+
+        // Look for alternative patterns with '(L)' or '(R)'
+        const altMatch = antagonistPart.match(/\((L|R)\)/i);
+        if (altMatch) {
+            return altMatch[1].toUpperCase() === 'L' ? 'left' : 'right';
+        }
+
+        // If the guard is "any", foot is likely unstated so return null
+        if (antagonistPart.includes('any')) {
+            return null;
+        }
+    }
+
+    // Look inside the text for explicit foot positions
+    // Patterns for direct enemy foot position (prioritize these)
+    const directEnemyFootPatterns = [
+        /your enemy .+? with (?:his |the )?(left|right) foot .+?/i,
+        /your adversary .+? with (?:his |the )?(left|right) foot .+?/i,
+        /your enemy is set in .+? with (?:his |the )?(left|right) foot forward/i,
+        /enemy is set in .+? with (?:the )?(left|right) foot forward/i,
+        /adversary is set in .+? with (?:the )?(left|right) foot forward/i,
+        /he is set in .+? with (?:the )?(left|right) foot forward/i,
+        /enemy remains in .+? with (?:the )?(left|right) foot forward/i,
+        /your enemy both being in .+? with (?:the )?(left|right) foot forward/i,
+        /your enemy with .+? and his (left|right) foot forward/i,
+    ];
+
+    // Check direct patterns first
+    for (const pattern of directEnemyFootPatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+            const foot = match[1].toLowerCase();
+            if (foot === 'left' || foot === 'right') {
+                return foot;
+            }
+        }
+    }
+
+    // Then check the "likewise" pattern (but don't use the one that captures protagonist foot)
+    const likewisePattern = /you are set in .+? with your (left|right) foot forward, and your enemy is set likewise/i;
+    const likewiseMatch = text.match(likewisePattern);
+    if (likewiseMatch && likewiseMatch[1]) {
+        const foot = likewiseMatch[1].toLowerCase();
+        if (foot === 'left' || foot === 'right') {
+            return foot;
+        }
+    }
+
+    return null;
+}
 
 /**
  * Main function to extract separate keys from the original data
@@ -423,6 +570,7 @@ function extract_separate_keys(data) {
             antagonist_guard_1: extractAntagonistGuard(play.text),
             antagonist_guard_2: extractAntagonistGuard(play.text, true),
             protagonist_foot_forward: extractProtagonistFoot(play.text),
+            antagonist_foot_forward: extractAntagonistFoot(play.text),
             patient: extractPatient(play.text),
             counter: extractCounterData(play.text),
             title: extractTitle(play.text)
